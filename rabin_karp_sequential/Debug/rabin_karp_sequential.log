@@ -1,4 +1,0 @@
-﻿  rabin_karp_sequential.cpp
-D:\rabin_karp\rabin_karp_sequential\rabin_karp_sequential.cpp(74,23): warning C4018: '<': signed/unsigned mismatch
-D:\rabin_karp\rabin_karp_sequential\rabin_karp_sequential.cpp(75,72): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
-  rabin_karp_sequential.vcxproj -> D:\rabin_karp\rabin_karp_sequential\Debug\rabin_karp_sequential.exe
