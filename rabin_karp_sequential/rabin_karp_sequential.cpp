@@ -3,6 +3,7 @@
 #include <sstream> 
 #include<math.h>
 #include <cctype>
+#include <chrono>
 
 using namespace std;
 
@@ -30,6 +31,8 @@ int main()
     cout << "Wzorzec:" << endl;
     cout << pattern << endl;
     cout << "__________" << endl;
+    
+    auto start = chrono::system_clock::now();
 
     int hashOfPattern = calculateHash(pattern);
     size_t patternLength = pattern.length();
@@ -53,6 +56,14 @@ int main()
             }
         }       
     }
+    
+    auto end = chrono::system_clock::now();
+    auto elapsed = end - start;
+    
+    cout << endl << "__________" << endl;
+    cout << "Czas wykonania algorytmu: " << endl << 
+        chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() << " milisec" << endl << 
+        chrono::duration_cast<std::chrono::microseconds>(elapsed).count() << " microsec" << endl;
 
     return 0;
 }
