@@ -11,8 +11,8 @@ int mod = 23;
 
 string readTextFromFile(string pathToFile);
 int calculateHash(string text);
-int moveHash(char oldChar, char newChar, int oldValue, int textLen);
-bool compareText(int length, string text, string pattern);
+int moveHash(char oldChar, char newChar, int oldValue, size_t textLen);
+bool compareText(size_t length, string text, string pattern);
 int modulo(int x, int N);
 
 int main()
@@ -32,8 +32,8 @@ int main()
     cout << "__________" << endl;
 
     int hashOfPattern = calculateHash(pattern);
-    int patternLength = pattern.length();
-    int textLength = text.length();
+    size_t patternLength = pattern.length();
+    size_t textLength = text.length();
     string pieceOfText = text.substr(0, patternLength);
     int hashOfPieceOfText = calculateHash(pieceOfText);
 
@@ -57,7 +57,7 @@ int main()
     return 0;
 }
 
-bool compareText(int length, string text, string pattern) {
+bool compareText(size_t length, string text, string pattern) {
     for (int i = 0; i < length; i++) {
         if (text[i] != pattern[i]) {
             return false;
@@ -69,10 +69,10 @@ bool compareText(int length, string text, string pattern) {
 
 int calculateHash(string text) {
     int result = 0;
-    int exponent = text.length() - 1;
+    int exponent = static_cast<int>(text.length()) - 1;
 
     for (int i = 0; i < text.length(); i++) {
-        result += (tolower(text[i]) - 'a') * pow(alphabetLen, exponent);
+        result += (tolower(text[i]) - 'a') * static_cast<int>(pow(alphabetLen, exponent));
         exponent--;
     }
 
@@ -83,7 +83,7 @@ int modulo(int x, int N) {
     return (x % N + N) % N;
 }
 
-int moveHash(char oldChar, char newChar, int oldValue, int textLen) {
+int moveHash(char oldChar, char newChar, int oldValue, size_t textLen) {
     int multiplier = (int) pow(alphabetLen, textLen - 1);
     
     int valueWithoutOldChar = (oldValue - (multiplier * (tolower(oldChar) - 'a')));
