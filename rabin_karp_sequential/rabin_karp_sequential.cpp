@@ -15,6 +15,7 @@ int calculateHash(string text);
 int moveHash(char oldChar, char newChar, int oldValue, size_t textLen);
 bool compareText(size_t length, string text, string pattern);
 int modulo(int x, int N);
+int modulo(double x, int N);
 
 int main()
 {
@@ -83,7 +84,7 @@ int calculateHash(string text) {
     int exponent = static_cast<int>(text.length()) - 1;
 
     for (int i = 0; i < text.length(); i++) {
-        result += (tolower(text[i]) - 'a') * static_cast<int>(pow(alphabetLen, exponent));
+        result += (tolower(text[i])) * modulo(pow(alphabetLen, exponent), mod);
         exponent--;
     }
 
@@ -94,24 +95,33 @@ int modulo(int x, int N) {
     return (x % N + N) % N;
 }
 
-int moveHash(char oldChar, char newChar, int oldValue, size_t textLen) {
-    int multiplier = (int) pow(alphabetLen, textLen - 1);
-    
-    int valueWithoutOldChar = (oldValue - (multiplier * (tolower(oldChar) - 'a')));
-   
-    int valueWithNewChar = valueWithoutOldChar * alphabetLen;    
-    valueWithNewChar += (tolower(newChar) - 'a');
+int modulo(double x, int N) {
+    return (int)fmod((fmod(x, N) + N), N);
+}
 
-    return modulo(valueWithNewChar,mod);
+int moveHash(char oldChar, char newChar, int oldValue, size_t textLen) {
+    int multiplier = modulo(pow(alphabetLen, textLen - 1), mod);
+    
+    int valueWithoutOldChar = modulo(oldValue - (multiplier * (tolower(oldChar))), mod);
+
+    int valueWithNewChar = modulo(valueWithoutOldChar * alphabetLen, mod);
+    valueWithNewChar += (tolower(newChar));
+
+    return modulo(valueWithNewChar, mod);
 }
 
 string readTextFromFile(string pathToFile) {
     ifstream inFile;
     stringstream strStream;
+    string text;
         
     inFile.open(pathToFile);
 
     strStream << inFile.rdbuf();
+    
+    for (string line; getline(strStream, line); ) {
+        text += line + " ";
+    }
 
-    return strStream.str();
+    return text;
 }
