@@ -5,6 +5,7 @@
 #include <cctype>
 #include<vector>
 #include<thread>
+#include <chrono>
 
 using namespace std;
 
@@ -15,18 +16,23 @@ int mod = 23;
 string readTextFromFile(string pathToFile);
 int calculateHash(string text);
 int moveHash(char oldChar, char newChar, int oldValue, int textLen);
-bool compareText(int length, string text, string pattern);
+bool compareText(size_t length, string text, string pattern);
+int modulo(double x, int N);
 int modulo(int x, int N);
-vector<string> divideText(string text, int patternLength, int numberOfThreads);
+vector<string> divideText(string text, int patternLength, int numberOfThreads, vector<int>* indexing);
 void rabinKarp(string text, string pattern, int startingIndex);
 
 int main(){
+    
+    if (thread::hardware_concurrency() != 0) {
+        numberOfThreads = thread::hardware_concurrency();
+    }
 
     string text = readTextFromFile("test.txt");
     string pattern;
 
     cout << "Podaj wzorzec: ";
-    cin >> pattern;
+    getline(cin, pattern);
 
     cout << endl << "Tekst:" << endl;
     cout << text << endl;
@@ -35,28 +41,40 @@ int main(){
     cout << "Wzorzec:" << endl;
     cout << pattern << endl;
     cout << "__________" << endl;
-
-    vector<string> dividedText = divideText(text, pattern.length(), 4);
+    
+    vector<int> indexing;
+    vector<string> dividedText = divideText(text, pattern.length(), numberOfThreads, &indexing);
     vector<thread> threads(dividedText.size());
     
     for (int i = 0; i < dividedText.size(); i++) {
         cout << dividedText[i] << endl;
     }
+    
+    cout << "__________" << endl;
 
+    auto start = chrono::system_clock::now();
+    
     for (int i = 0; i < dividedText.size(); i++) {
-        int startingIndex = 0;
-
-        if (i > 0) {
-            int lengthOfPieceOfText = text.length() / numberOfThreads;
-
-            startingIndex = i * lengthOfPieceOfText - (lengthOfPieceOfText - 1);
-        }
-
-        threads[i] = thread(rabinKarp, dividedText[i], pattern, startingIndex);
+        threads[i] = thread(rabinKarp, dividedText[i], pattern, indexing[i]);
     }
 
     for (int i = 0; i < dividedText.size(); i++) {
         threads[i].join();
+    }
+    
+    auto end = chrono::system_clock::now();
+    auto elapsed = end - start;
+
+    auto microsec = chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+    auto milisec = chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    auto seconds = chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+
+    cout << "Time: ";
+    if (seconds > 0) {
+        cout << seconds << " sec " << endl;
+    }
+    if (milisec > 0) {
+        cout << milisec << " milisec " << endl;
     }
 
     return 0;
@@ -87,74 +105,29 @@ void rabinKarp(string text, string pattern, int startingIndex) {
     }
 }
 
-vector<string> divideText(string text, int patternLength, int numberOfThreads) {
+vector<string> divideText(string text, int patternLength, int numberOfThreads, vector<int>* indexing) {
     vector<string> result;
 
-    int lengthOfPartOfText = text.length() / numberOfThreads;
-    int num = text.length() % numberOfThreads;
+    size_t baseLength = text.length();
+    int combinations = baseLength - patternLength + 1;
+    int combinationsPerThread = combinations / numberOfThreads;
 
-    for (int i = 0; i <= text.length();) {
-        if (i + lengthOfPartOfText < text.length()) {
-            if (i > 0) {
-                int patternLengthMinusOne = patternLength - 1;
+    int shift = 0;
+    int start = 0;
+    for (int i = 0; i < numberOfThreads; i++) {
 
-                result.push_back(text.substr(i - patternLengthMinusOne, lengthOfPartOfText + patternLengthMinusOne));
-            }
-            else {
-                result.push_back(text.substr(i, lengthOfPartOfText));
-            }
+        if (i == numberOfThreads - 1) {
+            start = i * (combinationsPerThread);
+            shift = text.length() - start;
+            result.push_back(text.substr(start, shift));
+            indexing->push_back(start);
         }
         else {
-            if (i > 0) {
-                int patternLengthMinusOne = patternLength - 1;
-
-                result.push_back(text.substr(i - patternLengthMinusOne, num + patternLengthMinusOne));
-            }
-            else {
-                result.push_back(text.substr(i, num));
-            }
+            start = i * (combinationsPerThread);
+            shift = (i + 1) * (combinationsPerThread)+(patternLength - 1) - start;
+            result.push_back(text.substr(start, shift));
+            indexing->push_back(start);
         }
-
-        
-        i += lengthOfPartOfText;
-    }
-
-    return result;
-}
-
-vector<string> divideText2(string text, int patternLength, int numberOfThreads) {
-    vector<string> smallTexts;
-    vector<string> result;
-
-    for (int i = 0; i < patternLength; i++) {
-        for (int j = i; j < text.length();) {
-            if (j + patternLength <= text.length()) {
-                smallTexts.push_back(text.substr(j, patternLength));
-                j += patternLength;
-            }
-            else {
-                break;
-            }            
-        }
-    }
-
-    int pieces = smallTexts.size() / numberOfThreads;
-    int extra = smallTexts.size() % numberOfThreads;
-
-    for (int i = 0; i < smallTexts.size(); i+= pieces) {
-        string connected = "";
-
-        for (int j = i; j < i + pieces; j++) {
-            connected += smallTexts[j];
-        }
-
-        if (i + pieces >= smallTexts.size()) {
-            for (int j = i + pieces; j < smallTexts.size(); j++) {
-                connected += smallTexts[j];
-            }
-        }
-
-        result.push_back(connected);
     }
 
     return result;
@@ -175,35 +148,46 @@ int calculateHash(string text) {
     int exponent = text.length() - 1;
 
     for (int i = 0; i < text.length(); i++) {
-        result += (tolower(text[i]) - 'a') * pow(alphabetLen, exponent);
+        result += (tolower(text[i])) * modulo(pow(alphabetLen, exponent), mod);
         exponent--;
     }
 
     return modulo(result, mod);
 }
 
-int modulo(int x, int N) {
-    return (x % N + N) % N;
-}
-
 int moveHash(char oldChar, char newChar, int oldValue, int textLen) {
-    int multiplier = (int)pow(alphabetLen, textLen - 1);
+    int multiplier = modulo(pow(alphabetLen, textLen - 1), mod);
+    
+    int valueWithoutOldChar = modulo(oldValue - (multiplier * (tolower(oldChar))), mod);
 
-    int valueWithoutOldChar = (oldValue - (multiplier * (tolower(oldChar) - 'a')));
-
-    int valueWithNewChar = valueWithoutOldChar * alphabetLen;
-    valueWithNewChar += (tolower(newChar) - 'a');
+    int valueWithNewChar = modulo(valueWithoutOldChar * alphabetLen, mod);
+    valueWithNewChar += (tolower(newChar));
 
     return modulo(valueWithNewChar, mod);
 }
 
+int modulo(double x, int N) {
+    return (int)fmod((fmod(x, N) + N), N);
+}
+
+int modulo(int x, int N) {
+    return (x % N + N) % N;
+}
+
+
+
 string readTextFromFile(string pathToFile) {
     ifstream inFile;
     stringstream strStream;
+    string text;
 
     inFile.open(pathToFile);
 
     strStream << inFile.rdbuf();
+    
+    for (string line; getline(strStream, line); ) {
+        text += line + " ";
+    }
 
-    return strStream.str();
+    return text;
 }
