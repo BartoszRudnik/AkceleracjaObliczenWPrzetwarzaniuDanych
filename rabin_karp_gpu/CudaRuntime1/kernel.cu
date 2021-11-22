@@ -24,6 +24,7 @@ int main()
     int numberOfCores = 3;
     char* text = readTextFromFile("test.txt");
     char* d_text;
+    char* d_pattern;
     char* pattern = "abb";
     int numberOfChars = strlen(text);
     int patternLength = strlen(pattern);
@@ -39,7 +40,7 @@ int main()
 
     int hashOfPattern = calculateHashCPU(pattern, patternLength);
 
-    cout << hashOfPattern << endl;
+    cout << "Pattern hash: " << hashOfPattern << endl << "__________" << endl;
 
     int pieceLen = numberOfChars / patternLength;
 
@@ -47,49 +48,63 @@ int main()
         pieceLen++;
     }
 
+    cudaMalloc((char**)&d_pattern, patternLength * sizeof(char));
     cudaMalloc((char**)&d_text, numberOfChars * sizeof(char));
+    cudaMemcpy(d_pattern, pattern, patternLength, cudaMemcpyHostToDevice);
     cudaMemcpy(d_text, text, numberOfChars, cudaMemcpyHostToDevice);
 
     dim3 block(numberOfCores);   
 
-    rabinKarp<<<1, numberOfCores>>>(text, numberOfChars, pattern, patternLength, hashOfPattern, pieceLen);
+    rabinKarp<<<1, numberOfCores>>>(d_text, numberOfChars, d_pattern, patternLength, hashOfPattern, pieceLen);
 
+    cudaFree(d_pattern);
     cudaFree(d_text);
 
     return 0;
 }
 
 __global__ void rabinKarp(char* text, int textLength, char* pattern, int patternLength, int hashOfPattern, int pieceLen) {       
-    if (threadIdx.x == 1) {
-        pieceLen -= (patternLength - 1);
-    }
+    char* pieceOfText = &text[threadIdx.x * pieceLen];    
 
-    char* pieceOfText = &text[(threadIdx.x - 1) * pieceLen];    
+    if (threadIdx.x > 0) {
+        pieceOfText -= patternLength - 1;
+    }
 
     int hashOfPieceOfText = calculateHash(pieceOfText, patternLength);
 
     if (hashOfPattern == hashOfPieceOfText) {
         if (compareText(patternLength, pieceOfText, pattern)) {
-            printf("%d ", (threadIdx.x - 1) * pieceLen);
+            if (threadIdx.x == 0) {
+                printf("Znaleziono od indeksu: %d \n", threadIdx.x * pieceLen);
+            }
+            else {
+                printf("Znaleziono od indeksu: %d \n", threadIdx.x * pieceLen - (patternLength - 1));
+            }            
         }
     }
 
-    printf("%d ", hashOfPieceOfText);
+    int numberOfIterations = pieceLen;
+    if (threadIdx.x > 0) {
+        numberOfIterations += patternLength - 1;
+    }
 
-    for (int i = 1; i <= sizeof(pieceOfText) / sizeof(char); i++) {
+    for (int i = 1; i <= numberOfIterations - patternLength; i++) {
         hashOfPieceOfText = moveHash(pieceOfText[i - 1], pieceOfText[i + patternLength - 1], hashOfPieceOfText, patternLength);
-
-        pieceOfText = &pieceOfText[i];
-
-        if (hashOfPattern == hashOfPieceOfText) {
-            if (compareText(patternLength, pieceOfText, pattern)) {
-                printf("%d ", (threadIdx.x - 1) * pieceLen + i);
+        
+        if (hashOfPattern == hashOfPieceOfText) {           
+            if (compareText(patternLength, pieceOfText + i, pattern)) {
+                if (threadIdx.x == 0) {
+                    printf("Znaleziono od indeksu: %d \n", threadIdx.x * pieceLen + i);
+                }
+                else {
+                    printf("Znaleziono od indeksu: %d \n", threadIdx.x * pieceLen - (patternLength - 1) + i);
+                }               
             }
         }
     }
 }
 
-__device__ bool compareText(size_t length, char* text, char* pattern) {
+__device__ bool compareText(size_t length, char* text, char* pattern) {    
     for (int i = 0; i < length; i++) {
         if (text[i] != pattern[i]) {
             return false;
@@ -103,14 +118,10 @@ __device__ int calculateHash(char* text, int patternLen) {
     int mod = 23;
     int alphabetLen = 26;
     int result = 0;
-    int exponent = static_cast<int>(sizeof(text) / sizeof(char)) - 1;
+    int exponent = patternLen - 1;
 
-    for (int i = 0; i < patternLen; i++) {    
-        if (text[i] != NULL && text[i] <= 'Z') {
-            text[i] += 32;
-        }
-
-        result += (text[i] - 'a') * static_cast<int>(pow(alphabetLen, exponent));
+    for (int i = 0; i < patternLen; i++) {
+        result += text[i] * modulo(pow(alphabetLen, exponent), mod);
         exponent--;
     }
 
@@ -121,21 +132,12 @@ __device__ int moveHash(char oldChar, char newChar, int oldValue, size_t textLen
     int mod = 23;
     int alphabetLen = 26;
 
-    int multiplier = (int)pow(alphabetLen, textLen - 1);
+    int multiplier = modulo(pow(alphabetLen, textLen - 1), mod);
 
-    if (oldChar <= 'Z') {
-        oldChar += 32;
-    }
+    int valueWithoutOldChar = modulo(oldValue - (multiplier * (oldChar)), mod);
 
-    int valueWithoutOldChar = (oldValue - (multiplier * (oldChar - 'a')));
-
-    int valueWithNewChar = valueWithoutOldChar * alphabetLen;
-
-    if (newChar <= 'Z') {
-        newChar += 32;
-    }
-
-    valueWithNewChar += (newChar - 'a');
+    int valueWithNewChar = modulo(valueWithoutOldChar * alphabetLen, mod);
+    valueWithNewChar += newChar;
 
     return modulo(valueWithNewChar, mod);
 }
@@ -143,7 +145,6 @@ __device__ int moveHash(char oldChar, char newChar, int oldValue, size_t textLen
 __device__ int modulo(int x, int N) {
     return (x % N + N) % N;
 }
-
 
 int moduloCPU(int x, int N)
 {
@@ -154,14 +155,14 @@ int calculateHashCPU(char* text, int patternLen) {
     int mod = 23;
     int alphabetLen = 26;
     int result = 0;
-    int exponent = static_cast<int>(sizeof(text) / sizeof(char)) - 1;
+    int exponent = patternLen - 1;
 
     for (int i = 0; i < patternLen; i++) {
-        if (text[i] <= 'Z') {
+        if (text[i] != NULL && text[i] <= 'Z') {
             text[i] += 32;
         }
 
-        result += (text[i] - 'a') * static_cast<int>(pow(alphabetLen, exponent));
+        result += text[i] * moduloCPU(pow(alphabetLen, exponent), mod);
         exponent--;
     }
 
