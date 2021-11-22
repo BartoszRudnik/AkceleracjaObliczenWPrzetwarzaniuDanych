@@ -9,9 +9,9 @@
 
 using namespace std;
 
-int alphabetLen = 26;
+int alphabetLen = 256;
 const int numberOfThreads = 4;
-int mod = 23;
+int mod = 101;
 
 string readTextFromFile(string pathToFile);
 int calculateHash(string text);
