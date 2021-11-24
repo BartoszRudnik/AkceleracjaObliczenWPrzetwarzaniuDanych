@@ -1,13 +1,1 @@
-﻿  Compiling CUDA source file kernel.cu...
-  
-  D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\bin\nvcc.exe" -gencode=arch=compute_52,code=\"sm_52,compute_52\" --use-local-env -ccbin "D:\visual_studio\VC\Tools\MSVC\14.29.30133\bin\HostX86\x64" -x cu   -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5\include"  -G   --keep-dir x64\Debug  -maxrregcount=0  --machine 64 --compile -cudart static  -g  -DWIN32 -DWIN64 -D_DEBUG -D_CONSOLE -D_MBCS -Xcompiler "/EHsc /W3 /nologo /Od /Fdx64\Debug\vc142.pdb /FS /Zi /RTC1 /MDd " -o x64\Debug\kernel.cu.obj "D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu" 
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu(24): warning #20039-D: a __host__ function("powWithModulo") redeclared with __device__, hence treated as a __host__ __device__ function
-  
-  kernel.cu
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu(39): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu(40): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu(181): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu(181): warning C4244: '=': conversion from 'int' to 'float', possible loss of data
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\kernel.cu(204): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-     Creating library D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\x64\Debug\CudaRuntime1.lib and object D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\x64\Debug\CudaRuntime1.exp
-  CudaRuntime1.vcxproj -> D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\x64\Debug\CudaRuntime1.exe
+﻿  CudaRuntime1.vcxproj -> D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_gpu\CudaRuntime1\x64\Debug\CudaRuntime1.exe

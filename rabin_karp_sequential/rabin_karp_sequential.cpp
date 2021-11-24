@@ -10,6 +10,9 @@ using namespace std;
 int alphabetLen = 256;
 int mod = 101;
 
+void showDataInfo(int numberOfChars, int patternLength, string pattern);
+void showTimeInfo(long long seconds, long long milisec, long long microsec);
+void showMenu(string& fileNameText, string& patternText);
 string readTextFromFile(string pathToFile);
 int calculateHash(string text);
 int moveHash(char oldChar, char newChar, int oldValue, size_t textLen);
@@ -19,32 +22,26 @@ int modulo(int x, int N);
 
 int main()
 {
-    string text = readTextFromFile("test.txt");
     string pattern;
+    string fileName;
 
-    cout << "Type pattern: ";
-    getline(cin, pattern);
+    showMenu(fileName, pattern);
 
-    cout << "________" << endl;
-    cout << "Text:" << endl;
+    string text = readTextFromFile(fileName);
 
-    cout << endl << "Text length: " << text.length() << endl;
-    cout << "________" << endl;
-
-    cout << "Pattern: " << "\"" << pattern << "\"" << endl;
-    cout << endl << "Pattern length: " << pattern.length() << endl;
-    cout << "________" << endl;
+    showDataInfo(text.size(), pattern.size(), pattern);
 
     auto start = chrono::system_clock::now();
 
     int hashOfPattern = calculateHash(pattern);
     size_t patternLength = pattern.length();
-    size_t textLength = text.length();
+    long textLength = text.size();
     string pieceOfText = text.substr(0, patternLength);
     int hashOfPieceOfText = calculateHash(pieceOfText);
 
     if (hashOfPattern == hashOfPieceOfText) {
         if (compareText(patternLength, pieceOfText, pattern)) {
+
             cout << "Znaleziono od indeksu: 0" << endl;
         }
     }
@@ -59,8 +56,7 @@ int main()
                 cout << "Znaleziono od indeksu: " + to_string(i) << endl;
             }
         }
-    }
-    
+    }    
 
     auto end = chrono::system_clock::now();
     auto elapsed = end - start;
@@ -68,7 +64,37 @@ int main()
     auto milisec = chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
     auto seconds = chrono::duration_cast<std::chrono::seconds>(elapsed).count();
 
-    cout << endl << "Time: ";
+    showTimeInfo(seconds, milisec, microsec);
+
+    return 0;
+}
+void showMenu(string& fileNameText, string& patternText) {
+    cout << "KARP-RABIN CPU SEQUENTIAL" << endl << endl;
+
+    while (fileNameText.size() < 1) {
+        cout << "Type file name: ";
+        getline(cin, fileNameText);
+    }
+
+    while (patternText.size() < 1) {
+        cout << "Type pattern: ";
+        getline(cin, patternText);
+    }
+}
+
+void showDataInfo(int numberOfChars, int patternLength, string pattern) {
+    cout << "---------------" << endl;
+    cout << "Text length: " << numberOfChars << endl;
+    cout << "---------------" << endl;
+
+    cout << "Pattern: " << "\"" << pattern << "\"" << endl;
+    cout << "Pattern length: " << patternLength << endl;
+    cout << "---------------" << endl;
+}
+
+void showTimeInfo(long long seconds, long long milisec, long long microsec) {
+    cout << "---------------" << endl;
+    cout << "Time: ";
     if (seconds > 0) {
         cout << seconds << "." << milisec % 1000 << " sec " << endl;
     }
@@ -78,13 +104,11 @@ int main()
     else {
         cout << microsec << " microsec " << endl;
     }
-
-    return 0;
 }
 
 bool compareText(size_t length, string text, string pattern) {
     for (int i = 0; i < length; i++) {
-        if (text[i] != pattern[i]) {
+        if (tolower(text[i]) != tolower(pattern[i])) {
             return false;
         }
     }

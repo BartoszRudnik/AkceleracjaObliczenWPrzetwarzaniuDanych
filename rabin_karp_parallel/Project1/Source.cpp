@@ -13,6 +13,9 @@ int alphabetLen = 256;
 int numberOfThreads = 4;
 int mod = 101;
 
+void showTimeInfo(long long seconds, long long milisec, long long microsec);
+void showMenu(string& fileName, string& pattern);
+void showDataInfo(int numberOfChars, int patternLength, string pattern, int numberOfThreads);
 string readTextFromFile(string pathToFile);
 int calculateHash(string text);
 int moveHash(char oldChar, char newChar, int oldValue, int textLen);
@@ -22,33 +25,20 @@ int modulo(int x, int N);
 vector<string> divideText(string text, int patternLength, int numberOfThreads, vector<int>* indexing);
 void rabinKarp(string text, string pattern, int startingIndex);
 
-int main() {
-
-
+int main()
+{
     if (thread::hardware_concurrency() != 0) {
         numberOfThreads = thread::hardware_concurrency();
     }
 
-    string text = readTextFromFile("test.txt");
     string pattern;
-    
-    cout << "Type pattern: ";
-    getline(cin, pattern);
+    string fileName;
 
-    cout << "________" << endl;
-    cout << "Text:" << endl;
+    showMenu(fileName, pattern);
 
-    cout << endl << "Text length: " << text.length() << endl;
-    cout << "________" << endl;
+    string text = readTextFromFile(fileName);       
 
-    cout << "Pattern: " << "\"" << pattern << "\"" << endl;
-    cout << endl << "Pattern length: " << pattern.length() << endl;
-    cout << "________" << endl;
-
-    cout << "CPU param:" << endl;
-    cout << endl << "Threads: " << numberOfThreads << endl;
-    cout << "________" << endl;
-
+    showDataInfo(text.size(), pattern.size(), pattern, numberOfThreads);
 
     vector<int> indexing;
     vector<string> dividedText = divideText(text, pattern.length(), numberOfThreads, &indexing);
@@ -71,17 +61,7 @@ int main() {
     auto milisec = chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
     auto seconds = chrono::duration_cast<std::chrono::seconds>(elapsed).count();
 
-    cout << endl << "Time: ";
-    if (seconds > 0) {
-        cout << seconds << "." << milisec % 1000 << " sec " << endl;
-        
-    } else if (milisec > 0) {
-        cout << milisec << "." << microsec % 1000 << " milisec " << endl;
-    }
-    else {
-        cout << microsec << " microsec " << endl;
-    }
-    
+    showTimeInfo(seconds, milisec, microsec);
 
     return 0;
 }
@@ -145,7 +125,7 @@ vector<string> divideText(string text, int patternLength, int numberOfThreads, v
 
 bool compareText(size_t length, string text, string pattern) {
     for (int i = 0; i < length; i++) {
-        if (text[i] != pattern[i]) {
+        if (tolower(text[i]) != tolower(pattern[i])) {
             return false;
         }
     }
@@ -200,4 +180,46 @@ string readTextFromFile(string pathToFile) {
     }
 
     return text;
+}
+
+void showMenu(string& fileNameText, string& patternText) {
+    cout << "KARP-RABIN CPU PARALLEL" << endl << endl;
+
+    while (fileNameText.size() < 1) {
+        cout << "Type file name: ";
+        getline(cin, fileNameText);
+    }
+
+    while (patternText.size() < 1) {
+        cout << "Type pattern: ";
+        getline(cin, patternText);
+    }
+}
+
+void showDataInfo(int numberOfChars, int patternLength, string pattern, int numberOfThreads) {
+    cout << "---------------" << endl;
+    cout << "Text length: " << numberOfChars << endl;
+    cout << "---------------" << endl;
+
+    cout << "Pattern: " << "\"" << pattern << "\"" << endl;
+    cout << "Pattern length: " << patternLength << endl;
+    cout << "---------------" << endl;
+
+    cout << "CPU param:" << endl;
+    cout << "Threads: " << numberOfThreads << endl;
+    cout << "---------------" << endl;
+}
+
+void showTimeInfo(long long seconds, long long milisec, long long microsec) {
+    cout << "---------------" << endl;
+    cout << "Time: ";
+    if (seconds > 0) {
+        cout << seconds << "." << milisec % 1000 << " sec " << endl;
+    }
+    else if (milisec > 0) {
+        cout << milisec << "." << microsec % 1000 << " milisec " << endl;
+    }
+    else {
+        cout << microsec << " microsec " << endl;
+    }
 }

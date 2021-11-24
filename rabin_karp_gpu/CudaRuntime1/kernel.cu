@@ -12,7 +12,7 @@ using namespace std;
 
 void showTimeInfo(long long seconds, long long milisec, long long microsec);
 void showMenu(string &fileName, string &pattern);
-void showDataInfo(int numberOfChars, int patternLength, string pattern, int blockSize, int gridSize);
+void showDataInfo(long numberOfChars, int patternLength, string pattern, int blockSize, int gridSize);
 char* readTextFromFile(string pathToFile);
 int calculateHashCPU(char text[], int patternLen);
 int moduloCPU(int x, int N);
@@ -36,10 +36,10 @@ int main()
 
     char* text = readTextFromFile(fileName); 
     strcpy(pattern, strPattern.c_str());
-    int numberOfChars = strlen(text);
+    long numberOfChars = strlen(text);
     int patternLength = strlen(pattern);
     int hashOfPattern = calculateHashCPU(pattern, patternLength);
-    int combinations = numberOfChars - patternLength + 1;
+    long combinations = numberOfChars - patternLength + 1;
     int blockSize;
     int minGridSize;
     int gridSize;
@@ -241,7 +241,7 @@ void showMenu(string &fileNameText, string &patternText) {
     }
 }
 
-void showDataInfo(int numberOfChars, int patternLength, string pattern, int blockSize, int gridSize) {
+void showDataInfo(long numberOfChars, int patternLength, string pattern, int blockSize, int gridSize) {
     cout << "---------------" << endl;
     cout << "Text length: " << numberOfChars << endl;
     cout << "---------------" << endl;
