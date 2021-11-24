@@ -5,12 +5,14 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <sstream> 
-#include <vector>
+#include <sstream>
 #include <chrono>
 
 using namespace std;
 
+void showTimeInfo(long long seconds, long long milisec, long long microsec);
+void showMenu(string &fileName, string &pattern);
+void showDataInfo(int numberOfChars, int patternLength, string pattern, int blockSize, int gridSize);
 char* readTextFromFile(string pathToFile);
 int calculateHashCPU(char text[], int patternLen);
 int moduloCPU(int x, int N);
@@ -24,44 +26,28 @@ __global__ void rabinKarp(char* text, int textLength, char* pattern, int pattern
 
 int main()
 {
-
-    char* text = readTextFromFile("test.txt");
+    string fileName;
+    string strPattern;
+    char* pattern = new char[100];
     char* d_text;
     char* d_pattern;
-    string strPattern;
-    char pattern[] = "feel will oh it we";
+
+    showMenu(fileName, strPattern);
+
+    char* text = readTextFromFile(fileName); 
+    strcpy(pattern, strPattern.c_str());
     int numberOfChars = strlen(text);
     int patternLength = strlen(pattern);
-
-    cout << "Type pattern: ";
-    getline(cin, strPattern);
-    strcpy(pattern, strPattern.c_str());
-
-    cout << endl << "________" << endl;
-    cout << "Tekst:" << endl;
-
-    cout << endl << "Text length: " << numberOfChars << endl;
-    cout << "________" << endl;
-
-    cout << "Wzorzec: " << "\"" << pattern << "\"" << endl;
-    cout << endl << "Pattern length: " << patternLength << endl;
-    cout << "________" << endl;
-
     int hashOfPattern = calculateHashCPU(pattern, patternLength);
-
     int combinations = numberOfChars - patternLength + 1;
     int blockSize;
     int minGridSize;
     int gridSize;
     cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, rabinKarp, 0, combinations);
-
     gridSize = (numberOfChars - patternLength + blockSize) / blockSize;
-
-    cout << "GPU param:" << endl;
-    cout << endl << "Block size: " << blockSize << " Gird size: " << gridSize << endl;
-    cout << "________" << endl;
-
     int pieceLen = patternLength;
+
+    showDataInfo(numberOfChars, patternLength, pattern, blockSize, gridSize);
 
     auto start = chrono::system_clock::now();
 
@@ -79,16 +65,7 @@ int main()
     auto milisec = chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
     auto seconds = chrono::duration_cast<std::chrono::seconds>(elapsed).count();
 
-    cout << endl << "Time: ";
-    if (seconds > 0) {
-        cout << seconds << "." << milisec % 1000 << " sec " << endl;
-    }
-    else if (milisec > 0) {
-        cout << milisec << "." << microsec % 1000 << " milisec " << endl;
-    }
-    else {
-        cout << microsec << " microsec " << endl;
-    }
+    showTimeInfo(seconds, milisec, microsec);
 
     cudaFree(d_pattern);
     cudaFree(d_text);
@@ -248,4 +225,46 @@ char* readTextFromFile(string pathToFile) {
     strcpy(result, text.c_str());
 
     return result;
+}
+
+void showMenu(string &fileNameText, string &patternText) {
+    cout << "KARP-RABIN GPU" << endl << endl;
+
+    while (fileNameText.size() < 1) {
+        cout << "Type file name: ";
+        getline(cin, fileNameText);
+    }
+
+    while (patternText.size() < 1) {
+        cout << "Type pattern: ";
+        getline(cin, patternText);
+    }
+}
+
+void showDataInfo(int numberOfChars, int patternLength, string pattern, int blockSize, int gridSize) {
+    cout << "---------------" << endl;
+    cout << "Text length: " << numberOfChars << endl;
+    cout << "---------------" << endl;
+
+    cout << "Pattern: " << "\"" << pattern << "\"" << endl;
+    cout << "Pattern length: " << patternLength << endl;
+    cout << "---------------" << endl;
+
+    cout << "GPU param:" << endl;
+    cout << "Block size: " << blockSize << " Grid size: " << gridSize << endl;
+    cout << "---------------"<< endl;
+}
+
+void showTimeInfo(long long seconds, long long milisec, long long microsec) {
+    cout << "---------------" << endl;
+    cout << "Time: ";
+    if (seconds > 0) {
+        cout << seconds << "." << milisec % 1000 << " sec " << endl;
+    }
+    else if (milisec > 0) {
+        cout << milisec << "." << microsec % 1000 << " milisec " << endl;
+    }
+    else {
+        cout << microsec << " microsec " << endl;
+    }
 }
