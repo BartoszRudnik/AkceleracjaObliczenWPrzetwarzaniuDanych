@@ -41,10 +41,11 @@ int main()
     showDataInfo(text.size(), pattern.size(), pattern, numberOfThreads);
 
     vector<int> indexing;
-    vector<string> dividedText = divideText(text, pattern.length(), numberOfThreads, &indexing);
-    vector<thread> threads(dividedText.size());
 
     auto start = chrono::system_clock::now();
+
+    vector<string> dividedText = divideText(text, pattern.length(), numberOfThreads, &indexing);
+    vector<thread> threads(dividedText.size());    
 
     for (int i = 0; i < dividedText.size(); i++) {
         threads[i] = thread(rabinKarp, dividedText[i], pattern, indexing[i]);
@@ -73,7 +74,6 @@ void rabinKarp(string text, string pattern, int startingIndex) {
     string pieceOfText = text.substr(0, patternLength);
     int hashOfPieceOfText = calculateHash(pieceOfText);
 
-
     if (hashOfPattern == hashOfPieceOfText) {
         if (compareText(patternLength, pieceOfText, pattern)) {
             cout << "Znaleziono od indeksu: " << startingIndex << endl;
@@ -81,9 +81,9 @@ void rabinKarp(string text, string pattern, int startingIndex) {
     }
 
     for (int i = 1; i <= textLength - patternLength; i++) {
+        int oldHash = hashOfPieceOfText;
         hashOfPieceOfText = moveHash(text[i - 1], text[i + patternLength - 1], hashOfPieceOfText, patternLength);
-        
-
+       
         if (hashOfPattern == hashOfPieceOfText) {
             pieceOfText = text.substr(i, patternLength);
             if (compareText(patternLength, pieceOfText, pattern)) {
@@ -139,7 +139,7 @@ int calculateHash(string text) {
     int exponent = text.length() - 1;
 
     for (int i = 0; i < text.length(); i++) {
-        result += (tolower(text[i])) * modulo(pow(alphabetLen, exponent), mod);
+        result += (tolower(text[i])) * modulo(pow(alphabetLen, exponent), mod);        
         exponent--;
     }
 
@@ -153,6 +153,7 @@ int moveHash(char oldChar, char newChar, int oldValue, int textLen) {
     int valueWithoutOldChar = modulo(oldValue - (multiplier * (tolower(oldChar))), mod);
 
     int valueWithNewChar = modulo(valueWithoutOldChar * alphabetLen, mod);
+
     valueWithNewChar += (tolower(newChar));
 
     return modulo(valueWithNewChar, mod);

@@ -1,5 +1,0 @@
-﻿  rabin_karp_sequential.cpp
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_sequential\rabin_karp_sequential.cpp(49,23): warning C4018: '<=': signed/unsigned mismatch
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_sequential\rabin_karp_sequential.cpp(110,23): warning C4018: '<': signed/unsigned mismatch
-D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_sequential\rabin_karp_sequential.cpp(123,23): warning C4018: '<': signed/unsigned mismatch
-  rabin_karp_sequential.vcxproj -> D:\rabin_karp\AkceleracjaObliczenWPrzetwarzaniuDanych\rabin_karp_sequential\Debug\rabin_karp_sequential.exe

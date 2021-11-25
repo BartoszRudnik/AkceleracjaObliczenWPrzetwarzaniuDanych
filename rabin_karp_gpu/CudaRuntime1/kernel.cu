@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-
+#include "cuda_profiler_api.h"
 #include <stdio.h>
 #include <string>
 #include <fstream>
@@ -14,15 +14,15 @@ void showTimeInfo(long long seconds, long long milisec, long long microsec);
 void showMenu(string &fileName, string &pattern);
 void showDataInfo(long numberOfChars, int patternLength, string pattern, int blockSize, int gridSize);
 char* readTextFromFile(string pathToFile);
-int calculateHashCPU(char text[], int patternLen);
+int calculateHashCPU(char* text, int patternLen);
 int moduloCPU(int x, int N);
-int powWithModulo(float x, int exp, int mod);
-__device__ int calculateHash(char text[], int patternLen);
+int powWithModuloCPU(float x, int exp, int mod);
+__device__ int calculateHash(char* text, int patternLen);
 __device__ int moveHash(char oldChar, char newChar, int oldValue, size_t textLen);
 __device__ bool compareText(size_t length, char* text, char* pattern);
 __device__ int modulo(int x, int N);
 __device__ int powWithModulo(float x, int exp, int mod);
-__global__ void rabinKarp(char* text, int textLength, char* pattern, int patternLength, int hashOfPattern, int pieceLen);
+__global__ void rabinKarp(char* text, int textLength, char* pattern, int patternLength, int hashOfPattern, int pieceLen, int multiplier);
 
 int main()
 {
@@ -39,51 +39,72 @@ int main()
     long numberOfChars = strlen(text);
     int patternLength = strlen(pattern);
     int hashOfPattern = calculateHashCPU(pattern, patternLength);
-    long combinations = numberOfChars - patternLength + 1;
+    int multiplier = 1;    
     int blockSize;
     int minGridSize;
     int gridSize;
-    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, rabinKarp, 0, combinations);
-    gridSize = (numberOfChars - patternLength + blockSize) / blockSize;
-    int pieceLen = patternLength;
+    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, rabinKarp, 0, 0);
+    gridSize = minGridSize;   
+
+    while (minGridSize * blockSize < numberOfChars / (patternLength * multiplier) + 1) {
+        multiplier++;
+    }
+
+    int pieceLen = patternLength * multiplier;
 
     showDataInfo(numberOfChars, patternLength, pattern, blockSize, gridSize);
 
-    auto start = chrono::system_clock::now();
 
     cudaMalloc((char**)&d_pattern, patternLength * sizeof(char));
     cudaMalloc((char**)&d_text, numberOfChars * sizeof(char));
+
+    auto start = chrono::system_clock::now();
+
     cudaMemcpy(d_pattern, pattern, patternLength, cudaMemcpyHostToDevice);
     cudaMemcpy(d_text, text, numberOfChars, cudaMemcpyHostToDevice);
 
-    rabinKarp << <gridSize, blockSize >> > (d_text, numberOfChars, d_pattern, patternLength, hashOfPattern, pieceLen);
-    cudaDeviceSynchronize();
-
-    auto end = chrono::system_clock::now();
-    auto elapsed = end - start;
-    auto microsec = chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-    auto milisec = chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-    auto seconds = chrono::duration_cast<std::chrono::seconds>(elapsed).count();
-
+    rabinKarp << <gridSize, blockSize >> > (d_text, numberOfChars, d_pattern, patternLength, hashOfPattern, pieceLen, multiplier);
+    
+    cudaError_t cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+        cout << cudaGetErrorString(cudaStatus) << endl;
+        return 1;
+    }
+    
+   auto end = chrono::system_clock::now();
+   auto elapsed = end - start;
+   auto microsec = chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+   auto milisec = chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+   auto seconds = chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+    
     showTimeInfo(seconds, milisec, microsec);
 
     cudaFree(d_pattern);
     cudaFree(d_text);
 
+    cudaStatus = cudaDeviceReset();
+    if (cudaStatus != cudaSuccess) {
+        cout << cudaGetErrorString(cudaStatus) << endl;
+        return 1;
+    }
+
     return 0;
 }
 
 
-__global__ void rabinKarp(char* text, int textLength, char* pattern, int patternLength, int hashOfPattern, int pieceLen) {
+__global__ void rabinKarp(char* text, int textLength, char* pattern, int patternLength, int hashOfPattern, int pieceLen, int multiplier) {
 
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    long id = threadIdx.x + blockIdx.x * blockDim.x;         
+
+    if (id > 0) {
+        id = id * multiplier * patternLength - 1;
+        pieceLen += patternLength - 1;        
+    }   
 
     if (id <= textLength - patternLength) {
 
-        int numberOfIterations = 0;
-        if (pieceLen > patternLength) {
-            numberOfIterations = pieceLen - patternLength;
-        }
+        int numberOfIterations = pieceLen - patternLength;
+        
         char* pieceOfText = &text[id];
 
         int hashOfPieceOfText = calculateHash(pieceOfText, patternLength);
@@ -94,16 +115,19 @@ __global__ void rabinKarp(char* text, int textLength, char* pattern, int pattern
             }
         }
 
-
-        for (int i = 1; i <= numberOfIterations; i++) {
+        for (int i = 1; i <= numberOfIterations; i++) {  
+            int oldHash = hashOfPieceOfText;
             hashOfPieceOfText = moveHash(pieceOfText[i - 1], pieceOfText[i + patternLength - 1], hashOfPieceOfText, patternLength);
-
+           
             if (hashOfPattern == hashOfPieceOfText) {
                 if (compareText(patternLength, pieceOfText + i, pattern)) {
                     printf("Znaleziono od indeksu: %d \n", id + i);
                 }
             }
         }
+    }
+    else {
+        return;
     }
 }
 
@@ -121,7 +145,7 @@ __device__ bool compareText(size_t length, char* text, char* pattern) {
     return true;
 }
 
-__device__ int calculateHash(char text[], int patternLen) {
+__device__ int calculateHash(char* text, int patternLen) {
     int mod = 101;
     int alphabetLen = 256;
     int result = 0;
@@ -129,7 +153,7 @@ __device__ int calculateHash(char text[], int patternLen) {
 
     for (int i = 0; i < patternLen; i++) {
         if (text[i] != NULL && text[i] <= 'Z' && text[i] >= 'A') {
-            text[i] += ('a' - 'A');
+            text[i] += 32;
         }
 
         result += text[i] * powWithModulo(alphabetLen, exponent, mod);
@@ -146,51 +170,56 @@ __device__ int moveHash(char oldChar, char newChar, int oldValue, size_t textLen
     int multiplier = powWithModulo(alphabetLen, textLen - 1, mod);
 
     if (oldChar != NULL && oldChar <= 'Z' && oldChar >= 'A') {
-        oldChar += ('a' - 'A');
+        oldChar += 32;
     }
+    if (newChar != NULL && newChar <= 'Z' && newChar >= 'A') {
+        newChar += 32;
+    }
+
     int valueWithoutOldChar = modulo(oldValue - (multiplier * (oldChar)), mod);
 
     int valueWithNewChar = modulo(valueWithoutOldChar * alphabetLen, mod);
-
-
-    if (newChar != NULL && newChar <= 'Z' && newChar >= 'A') {
-        newChar += ('a' - 'A');
-    }
     valueWithNewChar += newChar;
 
     return modulo(valueWithNewChar, mod);
 }
 
 __device__ int modulo(int x, int N) {
-    return x % N;
+    return ((x % N) + N) % N;
 }
 
 __device__ int powWithModulo(float x, int exp, int mod) {
+    if (exp == 0) {
+        return 1;
+    }
+
     float base = x;
     for (int i = 1; i < exp; i++) {
-        base *= base;
-        base = (int)fmodf(x, mod);
+        base *= x;
+        base = modulo(base, mod);
     }
-    return (int)base;
+    return modulo(base, mod);
 }
 
 int powWithModuloCPU(float x, int exp, int mod) {
+    if (exp == 0) {
+        return 1;
+    }
+
     float base = x;
     for (int i = 1; i < exp; i++) {
-        base *= base;
-        base = (int)fmodf(x, mod);
+        base *= x;
+        base = moduloCPU(base, mod);
     }
-    return (int)base;
+    return moduloCPU(base, mod);
 }
-
-
 
 int moduloCPU(int x, int N)
 {
-    return x % N;
+    return ((x % N) + N) % N;
 }
 
-int calculateHashCPU(char text[], int patternLen) {
+int calculateHashCPU(char* text, int patternLen) {
     int mod = 101;
     int alphabetLen = 256;
     int result = 0;
@@ -198,7 +227,7 @@ int calculateHashCPU(char text[], int patternLen) {
 
     for (int i = 0; i < patternLen; i++) {
         if (text[i] != NULL && text[i] <= 'Z' && text[i] >= 'A') {
-            text[i] += ('a' - 'A');
+            text[i] += 32;
         }
 
         result += text[i] * powWithModuloCPU(alphabetLen, exponent, mod);

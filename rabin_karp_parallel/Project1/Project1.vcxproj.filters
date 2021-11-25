@@ -23,5 +23,9 @@
     <Text Include="text.txt" />
     <Text Include="text2.txt" />
     <Text Include="text3.txt" />
+    <Text Include="test4.txt" />
+    <Text Include="text5.txt">
+      <Filter>Source Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>
